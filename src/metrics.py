@@ -3,20 +3,21 @@ from torchmetrics.segmentation import DiceScore, MeanIoU
 from torchmetrics import Accuracy
 
 class Metrics:
-    def __init__(self, loss_fn, n_classes = 2):
+    def __init__(self, loss_fn, n_classes = 2, device= "cpu"):
         """
         Initialize the Metrics class with required parameters.
         Args:
         - loss_fn: Loss function to calculate training loss.
         - n_classes: Number of classes in the segmentation task.
+        - device: Device where to do the operations. "cuda" or "cpu"
         """
         self.n_classes = n_classes
         self.loss_fn = loss_fn
 
         #Initialize torch metrics
-        self.miou_metrics = MeanIoU(num_classes=n_classes, ignore_index=None)
-        self.dice_metric = DiceScore(num_classes=n_classes, ignore_index=None)
-        self.pixe_accuracy = Accuracy(task="multiclass", num_classes=n_classes)
+        self.miou_metrics = MeanIoU(num_classes=n_classes,).to(device)
+        self.dice_metric = DiceScore(num_classes=n_classes).to(device)
+        self.pixe_accuracy = Accuracy(task="multiclass", num_classes=n_classes).to(device)
     
     def compute_metrics(self, pred, mask):
         """
@@ -32,7 +33,8 @@ class Metrics:
             pred = torch.argmax(pred, dim=1)  # Get class with highest probability
 
         return {
-            "mIoU": self.miou_metrics(pred, mask),
-            "Dice": self.dice_metric(pred, mask),
-            "Pixel Accuracy": self.pixe_accuracy(pred, mask)
+            #.item() because they are tensors
+            "mIoU": self.miou_metrics(pred, mask).item(),
+            "Dice": self.dice_metric(pred, mask).item(),
+            "Pixel Accuracy": self.pixe_accuracy(pred, mask).item()
         }
