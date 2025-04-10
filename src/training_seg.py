@@ -57,7 +57,7 @@ def move2device(batch, device):
 
 
 
-def train_one_epoch(model, dataloader, device, loss_fn, optimizer, scaler: torch.cuda.amp.GradScaler, epoch):
+def train_one_epoch(model, n_classes, dataloader, device, loss_fn, optimizer, scaler: torch.cuda.amp.GradScaler, epoch):
     """
     Performs training for one epoch with MLflow and segmentation metrics.
 
@@ -73,9 +73,15 @@ def train_one_epoch(model, dataloader, device, loss_fn, optimizer, scaler: torch
     Returns:
         dict: Training loss and metrics.
     """
-    epoch_loss = 0
-    model.train()
 
+    model.train()
+    #Metrric accumulation variables
+    train_epoch_loss = 0
+    total_miou = 0.0
+    total_dice = 0.0
+    total_PA = 0.0
+    #Instantiate metrics 
+    metrics = Metrics(loss_fn, n_classes=n_classes, device=device)
     #Start logging time
     start_time = time.time()
 
@@ -84,7 +90,7 @@ def train_one_epoch(model, dataloader, device, loss_fn, optimizer, scaler: torch
 
         #Mixed precision training
         with torch.amp.autocast(device_type=device):
-            preds = model(imgs)
+            preds = model(imgs)            
             loss = loss_fn(preds, masks)
 
         #Backpropagation and optimizer step, since we are using FP16 for calcs, 
@@ -94,17 +100,26 @@ def train_one_epoch(model, dataloader, device, loss_fn, optimizer, scaler: torch
         scaler.step(optimizer)
         scaler.update()
 
-        epoch_loss += loss.item()
-
-        #Compute metrics and log into MLflow
-        metrics = Metrics(loss_fn, device=device)
+        
+        #Compute metrics and accumulate for epoch
         batch_metrics = metrics.compute_metrics(preds, masks)
-        mlflow.log_metric("Train/IoU", batch_metrics["mIoU"], step=epoch)
-        mlflow.log_metric("Train/Dice", batch_metrics["Dice"], step=epoch)
-        mlflow.log_metric("Train/Pixel Accuracy", batch_metrics["Pixel Accuracy"], step=epoch)
+        total_miou  += batch_metrics["mIoU"]
+        total_dice  += batch_metrics["Dice"]
+        total_PA    += batch_metrics["Pixel Accuracy"]
+        train_epoch_loss += loss.item()
 
-    #Log into MLflow the loss
-    avg_loss = epoch_loss / len(dataloader)
+    #Epoch average metrics
+    avg_miou  = total_miou / len(dataloader)
+    avg_dice  = total_dice / len(dataloader)
+    avg_PA    = total_PA / len(dataloader)
+    avg_loss  = train_epoch_loss / len(dataloader)
+
+    #Log metrics into MLflow 
+    avg_loss = train_epoch_loss / len(dataloader)
+    mlflow.log_metric("Train/mIoU", avg_miou, step=epoch)
+    mlflow.log_metric("Train/Dice", avg_dice, step=epoch)
+    mlflow.log_metric("Train/Pixel Accuracy", avg_PA, step=epoch)
+    mlflow.log_metric("Train/Loss", avg_loss, step=epoch)
     mlflow.log_metric("Train/Loss", avg_loss, step=epoch)
 
     #Log time in MLflow
@@ -113,13 +128,12 @@ def train_one_epoch(model, dataloader, device, loss_fn, optimizer, scaler: torch
     mlflow.log_metric("Train/Time", epoch_time, step=epoch)
 
     return {"train_loss": avg_loss,
-            "train_miou": batch_metrics["mIoU"],
-            "train_dice": batch_metrics["Dice"],
-            "train_PA": batch_metrics["Pixel Accuracy"],
-            "train_time": epoch_time
+            "train_miou": avg_miou,
+            "train_dice": avg_dice,
+            "train_PA": avg_PA,            
             }
 
-def val_one_epoch(model, dataloader, device, loss_fn, epoch):
+def val_one_epoch(model, n_classes, dataloader, device, loss_fn, epoch):
     """
     Performs validation for one epoch and tracks metrics.
 
@@ -134,8 +148,14 @@ def val_one_epoch(model, dataloader, device, loss_fn, epoch):
         dict: Validation metrics.
     """
     model.eval()
+    
+     #Metrric accumulation variables
+    total_miou = 0.0
+    total_dice = 0.0
+    total_PA = 0.0
     val_epoch_loss = 0
-
+    #Instantiate metrics 
+    metrics = Metrics(loss_fn, n_classes=n_classes, device=device)
     #Start logging time
     start_time = time.time()
 
@@ -147,28 +167,34 @@ def val_one_epoch(model, dataloader, device, loss_fn, epoch):
                 preds = model(imgs)
                 loss = loss_fn(preds, masks)
 
+            batch_metrics = metrics.compute_metrics(preds, masks)
+            total_miou  += batch_metrics["mIoU"]
+            total_dice  += batch_metrics["Dice"]
+            total_PA    += batch_metrics["Pixel Accuracy"]
             val_epoch_loss += loss.item()
 
-            #Cumpute metrics
-            metrics = Metrics(loss_fn, device=device)
-            batch_metrics = metrics.compute_metrics(preds, masks)
-            mlflow.log_metric("Val/IoU", batch_metrics["mIoU"], step=epoch)
-            mlflow.log_metric("Val/Dice", batch_metrics["Dice"], step=epoch)
-            mlflow.log_metric("Val/Pixel Accuracy", batch_metrics["Pixel Accuracy"], step=epoch)
-    
-    # Logging end time
+    # Calcular promedios de cada métrica
+    avg_miou  = total_miou / len(dataloader)
+    avg_dice  = total_dice / len(dataloader)
+    avg_PA    = total_PA / len(dataloader)
+    avg_loss  = val_epoch_loss / len(dataloader)
+
+    #Log metrics into MLflow 
+    avg_loss = val_epoch_loss / len(dataloader)
+    mlflow.log_metric("Val/mIoU", avg_miou, step=epoch)
+    mlflow.log_metric("Val/Dice", avg_dice, step=epoch)
+    mlflow.log_metric("Val/Pixel Accuracy", avg_PA, step=epoch)
+    mlflow.log_metric("Val/Loss", avg_loss, step=epoch)
+
+    #Logging end time
     end_time = time.time()
     epoch_time = end_time - start_time 
     mlflow.log_metric("Val/Time", epoch_time, step=epoch)
 
-    #Calculate and log loss
-    avg_loss = val_epoch_loss / len(dataloader)
-    mlflow.log_metric("Val/Loss", avg_loss, step=epoch)
-
     return {"val_loss": avg_loss,
-            "val_miou": batch_metrics["mIoU"],
-            "val_dice": batch_metrics["Dice"],
-            "val_PA": batch_metrics["Pixel Accuracy"]
+            "val_miou": avg_miou,
+            "val_dice": avg_dice,
+            "val_PA": avg_PA
             }
          
 # def save_best_model(model, val_metrics, best_val_loss, experiment_name, run_id, epoch):

@@ -10,7 +10,7 @@ class CombinedLoss:
             weight_dice (float): Weight for the Dice loss. Default is 0.5.
             weight_focal (float): Weight for the Focal loss. Default is 0.5.
         """
-        self.dice_loss = DiceLoss(mode=mode)
+        self.dice_loss = DiceLoss(mode=mode, from_logits=True)
         self.focal_loss = FocalLoss(mode=mode)
         self.weight_dice = weight_dice
         self.weight_focal = weight_focal
