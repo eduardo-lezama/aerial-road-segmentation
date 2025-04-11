@@ -173,7 +173,7 @@ def val_one_epoch(model, n_classes, dataloader, device, loss_fn, epoch):
             total_PA    += batch_metrics["Pixel Accuracy"]
             val_epoch_loss += loss.item()
 
-    # Calcular promedios de cada métrica
+    #Mean calculation for metrics
     avg_miou  = total_miou / len(dataloader)
     avg_dice  = total_dice / len(dataloader)
     avg_PA    = total_PA / len(dataloader)
@@ -197,30 +197,3 @@ def val_one_epoch(model, n_classes, dataloader, device, loss_fn, epoch):
             "val_PA": avg_PA
             }
          
-# def save_best_model(model, val_metrics, best_val_loss, experiment_name, run_id, epoch):
-#     """
-#     Saves the best model based on validation loss and logs it as an MLflow artifact.
-
-#     Args:
-#         model: PyTorch model instance.
-#         val_metrics (dict): Validation metrics containing "val_loss".
-#         best_val_loss (float): Best validation loss so far.
-#         experiment_name (str): Name of the current experiment.
-#         run_id (str): MLflow run ID for the current execution.
-#         epoch (int): Current epoch number.
-
-#     Returns:
-#         float: Updated best_val_loss.
-#     """
-#     #Save only if loss is better than previous
-#     if val_metrics["val_loss"] < best_val_loss:
-#         os.makedirs("saved_models", exist_ok=True)
-#         best_val_loss = val_metrics["val_loss"]
-
-#         #Save model locally with experiment info in the name
-#         model_path = f"saved_models/best_model_{experiment_name}_run_{run_id}.pth"
-#         torch.save(model.state_dict(), model_path)
-
-#         #Log the model as a MLflow artifact
-#         mlflow.log_artifact(model_path)
-#         print(f"Saved new best model for experiment '{experiment_name}', run {run_id}, epoch {epoch+1}")
