@@ -35,7 +35,7 @@ This project demonstrates the effectiveness of semantic segmentation in aerial i
 > *Use of albumentations to create augmented images*
 
 
-### **Confusion Matrix (Test dataset)** 📊
+### **Model results example tracked in MLflow** 📊
 ![Best model](./assets/best_model.png)
 > *Model  example results after training* 
 <br>
