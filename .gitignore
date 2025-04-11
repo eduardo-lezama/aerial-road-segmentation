@@ -1,13 +1,19 @@
-# Carpeta donde guardas tu dataset
+# Carpeta 
 dataset/
+dataset_mamitas/
+dataset_road_kaggle/
 mlruns/
+notebooks_test/
+road_segmentation_massachusets.ipynb
 
-# Archivos de modelos entrenados o checkpoints
+# Archivos 
 *.pth
 *.pt
+test1.tiff
+test2.tiff
+road_segmentation_massachusets.ipynb
 
-
-# Archivos temporales del sistema operativo
+# Archivos temporales 
 .DS_Store
 Thumbs.db
 

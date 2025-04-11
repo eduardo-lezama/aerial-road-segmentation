@@ -1,7 +1,7 @@
 from segmentation_models_pytorch.losses import DiceLoss, FocalLoss
 
 class CombinedLoss:
-    def __init__(self, mode: str, weight_dice: float = 1, weight_focal: float = 1):
+    def __init__(self, mode: str, weight_dice: float = 1, weight_focal: float = 0.5):
         """
         Initialize the combined loss function as a weighted sum of DiceLoss and FocalLoss.
 

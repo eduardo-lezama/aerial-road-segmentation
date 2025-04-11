@@ -37,9 +37,9 @@ def setup_train(model, device, hyperparams: dict):
     assert device.lower() in ["cuda", "cpu"], f"Device must be 'cuda' or 'cpu'"
     model = model.to(device).train()
     epochs = hyperparams["epochs"]
-    loss_fn = CombinedLoss(mode="binary") #torch.nn.CrossEntropyLoss()  # Or use DiceLoss + Focal loss
+    loss_fn = CombinedLoss(mode="binary")#torch.nn.CrossEntropyLoss()   # Or use DiceLoss + Focal loss
     optimizer = torch.optim.Adam(params=model.parameters(), lr=hyperparams["lr"])
-    scheduler = StepLR(optimizer, step_size=15, gamma=0.1)
+    scheduler = StepLR(optimizer, step_size=12, gamma=0.1)
     return model, epochs, device, loss_fn, optimizer, scheduler
 
 def move2device(batch, device):
